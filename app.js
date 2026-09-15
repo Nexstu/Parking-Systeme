@@ -15,7 +15,13 @@ const HL_MAX = 100;
 const NO_RESPONSE_HL = 95;
 
 const EAR_LABELS = { droite: "Oreille droite", gauche: "Oreille gauche" };
-const EAR_COLORS = { droite: "#e04b4b", gauche: "#3b82f6" };
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function earColor(ear) {
+  return ear === "droite" ? cssVar("--right-ear") : cssVar("--left-ear");
+}
 
 /* ---------------------------------------------------------------------
  * Audio engine
@@ -193,7 +199,7 @@ function loadCurrentStep() {
   volSlider.value = 0;
   currentEarLabel.textContent = EAR_LABELS[ear];
   currentFreqLabel.textContent = formatFreq(freq);
-  currentFreqLabel.style.color = freq > EHF_CUTOFF ? "#4fb0ff" : "";
+  currentFreqLabel.classList.toggle("ehf", freq > EHF_CUTOFF);
   updateProgress();
 
   startTone(freq, ear, 0);
@@ -279,8 +285,14 @@ function svgEl(tag, attrs, text) {
 
 function drawAudiogram() {
   const { width, height, marginLeft, marginRight, marginTop, marginBottom } = CHART;
-  const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, xmlns: SVG_NS });
-  svg.style.background = "#0b1119";
+  const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, xmlns: SVG_NS, "font-family": "IBM Plex Mono, ui-monospace, monospace" });
+
+  const gridColor = cssVar("--chart-grid") || "#1d2a3a";
+  const gridStrong = cssVar("--chart-grid-strong") || "#39506b";
+  const textDim = cssVar("--text-dim") || "#9db0c4";
+  const textColor = cssVar("--text") || "#e7edf5";
+  const accent = cssVar("--accent") || "#4fb0ff";
+  const zoneTint = cssVar("--zone-tint") || "rgba(79,176,255,0.07)";
 
   const plotLeft = marginLeft, plotRight = width - marginRight;
   const plotTop = marginTop, plotBottom = height - marginBottom;
@@ -289,14 +301,14 @@ function drawAudiogram() {
   svg.appendChild(svgEl("rect", {
     x: freqToX(EHF_CUTOFF), y: plotTop,
     width: plotRight - freqToX(EHF_CUTOFF), height: plotBottom - plotTop,
-    fill: "rgba(79,176,255,0.07)"
+    fill: zoneTint
   }));
   svg.appendChild(svgEl("line", {
     x1: freqToX(EHF_CUTOFF), y1: plotTop, x2: freqToX(EHF_CUTOFF), y2: plotBottom,
-    stroke: "#4fb0ff", "stroke-width": 1, "stroke-dasharray": "4,4"
+    stroke: accent, "stroke-width": 1, "stroke-dasharray": "4,4"
   }));
   const ehfLabel = svgEl("text", {
-    x: freqToX(EHF_CUTOFF) + 6, y: plotTop + 14, fill: "#4fb0ff", "font-size": 11, "font-family": "sans-serif"
+    x: freqToX(EHF_CUTOFF) + 6, y: plotTop + 14, fill: accent, "font-size": 11
   }, "Hautes fréquences étendues >");
   svg.appendChild(ehfLabel);
 
@@ -305,14 +317,14 @@ function drawAudiogram() {
     const y = hlToY(hl);
     svg.appendChild(svgEl("line", {
       x1: plotLeft, y1: y, x2: plotRight, y2: y,
-      stroke: hl === 0 ? "#39506b" : "#1d2a3a", "stroke-width": hl === 0 ? 1.5 : 1
+      stroke: hl === 0 ? gridStrong : gridColor, "stroke-width": hl === 0 ? 1.5 : 1
     }));
     svg.appendChild(svgEl("text", {
-      x: plotLeft - 10, y: y + 4, fill: "#9db0c4", "font-size": 11, "text-anchor": "end", "font-family": "sans-serif"
+      x: plotLeft - 10, y: y + 4, fill: textDim, "font-size": 11, "text-anchor": "end"
     }, String(hl)));
   }
   svg.appendChild(svgEl("text", {
-    x: 16, y: (plotTop + plotBottom) / 2, fill: "#e7edf5", "font-size": 12, "font-family": "sans-serif",
+    x: 16, y: (plotTop + plotBottom) / 2, fill: textColor, "font-size": 12,
     transform: `rotate(-90 16 ${(plotTop + plotBottom) / 2})`, "text-anchor": "middle"
   }, "Seuil indicatif (dB, non calibré)"));
 
@@ -320,10 +332,10 @@ function drawAudiogram() {
   ALL_TEMPLATE_FREQS.forEach((f) => {
     const x = freqToX(f);
     svg.appendChild(svgEl("line", {
-      x1: x, y1: plotTop, x2: x, y2: plotBottom, stroke: "#1d2a3a", "stroke-width": 1
+      x1: x, y1: plotTop, x2: x, y2: plotBottom, stroke: gridColor, "stroke-width": 1
     }));
     const label = svgEl("text", {
-      x: x, y: plotBottom + 18, fill: "#9db0c4", "font-size": 10, "text-anchor": "middle", "font-family": "sans-serif",
+      x: x, y: plotBottom + 18, fill: textDim, "font-size": 10, "text-anchor": "middle",
       transform: `rotate(45 ${x} ${plotBottom + 18})`
     }, formatFreq(f));
     svg.appendChild(label);
@@ -332,12 +344,12 @@ function drawAudiogram() {
   // Cadre
   svg.appendChild(svgEl("rect", {
     x: plotLeft, y: plotTop, width: plotRight - plotLeft, height: plotBottom - plotTop,
-    fill: "none", stroke: "#39506b", "stroke-width": 1
+    fill: "none", stroke: gridStrong, "stroke-width": 1
   }));
 
   // Tracés par oreille
   state.ears.forEach((ear) => {
-    const color = EAR_COLORS[ear];
+    const color = earColor(ear);
     const testedFreqs = ALL_TEMPLATE_FREQS.filter((f) => state.results[ear][f] !== undefined);
 
     // lignes reliant les points valides (segments coupés aux "aucune réponse")
@@ -426,7 +438,7 @@ exportPngBtn.addEventListener("click", () => {
     canvas.width = CHART.width * scale;
     canvas.height = CHART.height * scale;
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#0b1119";
+    ctx.fillStyle = cssVar("--surface-2") || "#0b1119";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.scale(scale, scale);
     ctx.drawImage(img, 0, 0);

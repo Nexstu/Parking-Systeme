@@ -1,63 +1,118 @@
 :root {
-  --bg: #0f1620;
-  --panel: #161f2c;
-  --panel-border: #263244;
-  --text: #e7edf5;
-  --text-dim: #9db0c4;
-  --accent: #4fb0ff;
-  --accent-2: #2dd4bf;
-  --danger: #ff6b6b;
-  --right-ear: #e04b4b;
-  --left-ear: #3b82f6;
-  --zone: rgba(79, 176, 255, 0.08);
-  --radius: 10px;
+  --bg: #eef2f6;
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --border: #d7e0ea;
+  --text: #16202c;
+  --text-dim: #5c6b7c;
+  --accent: #0e7490;
+  --accent-contrast: #ffffff;
+  --accent-2: #ea580c;
+  --warn-bg: #fdf1e0;
+  --warn-border: #e8b567;
+  --warn-text: #7a4c0a;
+  --danger: #c0362c;
+  --right-ear: #c0362c;
+  --left-ear: #2563eb;
+  --zone-tint: rgba(14, 116, 144, 0.07);
+  --chart-grid: #dde5ec;
+  --chart-grid-strong: #b7c4d2;
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a1017;
+    --surface: #121a24;
+    --surface-2: #0e151e;
+    --border: #24313f;
+    --text: #e6edf3;
+    --text-dim: #8fa3b3;
+    --accent: #22d3ee;
+    --accent-contrast: #04222b;
+    --accent-2: #fb923c;
+    --warn-bg: #2a2010;
+    --warn-border: #6b5216;
+    --warn-text: #f3d98a;
+    --danger: #f0776d;
+    --right-ear: #f0776d;
+    --left-ear: #60a5fa;
+    --zone-tint: rgba(34, 211, 238, 0.08);
+    --chart-grid: #1d2a3a;
+    --chart-grid-strong: #35485f;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a1017;
+  --surface: #121a24;
+  --surface-2: #0e151e;
+  --border: #24313f;
+  --text: #e6edf3;
+  --text-dim: #8fa3b3;
+  --accent: #22d3ee;
+  --accent-contrast: #04222b;
+  --accent-2: #fb923c;
+  --warn-bg: #2a2010;
+  --warn-border: #6b5216;
+  --warn-text: #f3d98a;
+  --danger: #f0776d;
+  --right-ear: #f0776d;
+  --left-ear: #60a5fa;
+  --zone-tint: rgba(34, 211, 238, 0.08);
+  --chart-grid: #1d2a3a;
+  --chart-grid-strong: #35485f;
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .app {
-  max-width: 900px;
+  max-width: 680px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding-inline: 16px;
+  padding-block: 24px 64px;
 }
 
 .app-header h1 {
-  margin: 0 0 4px;
-  font-size: 1.6rem;
+  margin: 0 0 6px;
+  font-size: 1.55rem;
+  font-weight: 700;
   display: flex;
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
+  text-wrap: balance;
 }
 
 .badge {
-  font-size: 0.65rem;
-  background: var(--accent-2);
-  color: #04241f;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  background: var(--accent);
+  color: var(--accent-contrast);
   padding: 3px 8px;
   border-radius: 999px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .subtitle {
   color: var(--text-dim);
-  margin: 0 0 20px;
+  margin: 0 0 22px;
   font-size: 0.95rem;
+  max-width: 60ch;
 }
 
 .disclaimer {
-  background: #2a2010;
-  border: 1px solid #6b5216;
-  color: #f3d98a;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-text);
   padding: 12px 14px;
   border-radius: var(--radius);
   font-size: 0.85rem;
@@ -65,16 +120,25 @@ body {
 }
 
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--panel-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 22px;
   margin-bottom: 20px;
 }
 
 .panel h2 {
   margin-top: 0;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.panel h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  margin: 20px 0 8px;
 }
 
 .hidden { display: none; }
@@ -91,8 +155,8 @@ body {
   flex-direction: column;
   gap: 8px;
   align-items: flex-start;
-  background: #101823;
-  border: 1px solid var(--panel-border);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px;
   margin: 14px 0 20px;
@@ -113,32 +177,34 @@ body {
 }
 
 .btn {
-  background: #1d2a3a;
+  font-family: inherit;
+  background: var(--surface-2);
   color: var(--text);
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--border);
   padding: 10px 16px;
   border-radius: 8px;
   font-size: 0.9rem;
   cursor: pointer;
   transition: background 0.15s, transform 0.05s;
 }
-.btn:hover { background: #253549; }
+.btn:hover { background: var(--zone-tint); }
 .btn:active { transform: scale(0.98); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .btn-primary {
   background: var(--accent);
-  color: #041322;
+  color: var(--accent-contrast);
   border-color: var(--accent);
   font-weight: 600;
 }
-.btn-primary:hover { background: #6cbdff; }
+.btn-primary:hover { filter: brightness(1.08); }
 
 .btn-secondary {
   background: transparent;
   border-color: var(--danger);
   color: var(--danger);
 }
-.btn-secondary:hover { background: rgba(255, 107, 107, 0.1); }
+.btn-secondary:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
 .btn-link {
   background: none;
@@ -146,6 +212,7 @@ body {
   color: var(--text-dim);
   text-decoration: underline;
   padding: 8px 0;
+  cursor: pointer;
 }
 
 #startTestBtn { margin-top: 16px; }
@@ -154,42 +221,54 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 .progress-bar {
   flex: 1;
-  height: 8px;
-  background: #101823;
+  height: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 999px;
   overflow: hidden;
 }
 .progress-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  background: var(--accent);
   transition: width 0.25s;
 }
 #progressText {
-  font-size: 0.8rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
   color: var(--text-dim);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .test-status {
   text-align: center;
-  margin: 10px 0 24px;
+  margin: 8px 0 26px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 16px;
 }
 .test-ear {
-  font-size: 1rem;
+  font-size: 0.8rem;
   color: var(--text-dim);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  font-weight: 600;
 }
 .test-freq {
-  font-size: 2.4rem;
-  font-weight: 700;
-  color: var(--accent-2);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 2.6rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
 }
+.test-freq.ehf { color: var(--accent-2); }
 
 .slider-label {
   display: block;
@@ -235,18 +314,19 @@ body {
 .dot.left { border-color: var(--left-ear); background: transparent; }
 .zone-swatch {
   width: 18px; height: 12px;
-  background: var(--zone);
+  background: var(--zone-tint);
   border: 1px dashed var(--accent);
   display: inline-block;
 }
 
 .audiogram-container {
-  background: #0b1119;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 8px;
   overflow-x: auto;
 }
-.audiogram-container svg { width: 100%; height: auto; display: block; }
+.audiogram-container svg { width: 100%; height: auto; display: block; min-width: 480px; }
 
 .results-actions {
   display: flex;
@@ -260,18 +340,19 @@ body {
   border-collapse: collapse;
   font-size: 0.85rem;
   margin-top: 10px;
+  font-variant-numeric: tabular-nums;
 }
 .results-table th, .results-table td {
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--border);
   padding: 6px 10px;
   text-align: center;
 }
 .results-table th {
-  background: #101823;
+  background: var(--surface-2);
   color: var(--text-dim);
   font-weight: 600;
 }
-.results-table td.ehf { background: rgba(79, 176, 255, 0.06); }
+.results-table td.ehf { background: var(--zone-tint); }
 
 @media print {
   body { background: #fff; color: #000; }
@@ -280,7 +361,8 @@ body {
 }
 
 @media (max-width: 520px) {
-  .test-freq { font-size: 1.8rem; }
+  .test-freq { font-size: 1.9rem; }
   .test-buttons { flex-direction: column; width: 100%; }
   .test-buttons .btn { width: 100%; }
+  .audiogram-container svg { min-width: 0; }
 }
