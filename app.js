@@ -22,18 +22,9 @@ function cssVar(name) {
 function earColor(ear) {
   return ear === "droite" ? cssVar("--right-ear") : cssVar("--left-ear");
 }
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
-}
 
 /* ---------------------------------------------------------------------
  * Audio engine
- *
- * Important : un navigateur ne peut PAS piloter le volume système/media
- * du telephone (restriction de securite identique sur tous les
- * navigateurs mobiles). Tout est donc exprime en dBFS = un niveau
- * numerique relatif au volume que l'utilisateur a regle lui-meme lors
- * de la calibration, jamais une vraie pression acoustique (dB SPL/HL).
  * ------------------------------------------------------------------- */
 let audioCtx = null;
 let oscillator = null;
@@ -50,14 +41,18 @@ function ensureAudioContext() {
   return audioCtx;
 }
 
-function dbfsToGain(dbfs) {
+function sliderToGain(val) {
+  // val: 0-100 -> dBFS from -70 (quasi silencieux) to 0 (plein volume)
+  const dbfs = -70 + (val / 100) * 70;
   return Math.pow(10, dbfs / 20);
 }
-function dbfsToHL(dbfs) {
-  return Math.round(clamp(dbfs + 70, 0, 90));
+
+function sliderToHL(val) {
+  // Mappe linéairement le curseur (0-100) vers une échelle "HL" indicative (0-70)
+  return Math.round(val * 0.7);
 }
 
-function startContinuousTone(freq, ear, dbfs) {
+function startTone(freq, ear, sliderVal) {
   stopTone();
   const ctx = ensureAudioContext();
 
@@ -66,13 +61,19 @@ function startContinuousTone(freq, ear, dbfs) {
   oscillator.frequency.value = freq;
 
   gainNode = ctx.createGain();
-  gainNode.gain.value = dbfsToGain(dbfs);
+  gainNode.gain.value = sliderToGain(sliderVal);
 
   pannerNode = ctx.createStereoPanner();
   pannerNode.pan.value = ear === "droite" ? 1 : ear === "gauche" ? -1 : 0;
 
   oscillator.connect(gainNode).connect(pannerNode).connect(ctx.destination);
   oscillator.start();
+}
+
+function updateToneGain(val) {
+  if (gainNode && audioCtx) {
+    gainNode.gain.setTargetAtTime(sliderToGain(val), audioCtx.currentTime, 0.01);
+  }
 }
 
 function stopTone() {
@@ -83,31 +84,6 @@ function stopTone() {
   }
   if (gainNode) { gainNode.disconnect(); gainNode = null; }
   if (pannerNode) { pannerNode.disconnect(); pannerNode = null; }
-}
-
-// Un "bip" court avec un fondu entree/sortie (evite les clics), pour la
-// methode de test par triplets de bips.
-function playSingleBeep(freq, ear, dbfs) {
-  const ctx = ensureAudioContext();
-  const osc = ctx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.value = freq;
-
-  const g = ctx.createGain();
-  const p = ctx.createStereoPanner();
-  p.pan.value = ear === "droite" ? 1 : ear === "gauche" ? -1 : 0;
-  osc.connect(g).connect(p).connect(ctx.destination);
-
-  const t0 = ctx.currentTime;
-  const dur = BEEP_DURATION_MS / 1000;
-  const fade = BEEP_FADE_MS / 1000;
-  const gain = dbfsToGain(dbfs);
-  g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(gain, t0 + fade);
-  g.gain.setValueAtTime(gain, t0 + dur - fade);
-  g.gain.linearRampToValueAtTime(0, t0 + dur);
-  osc.start(t0);
-  osc.stop(t0 + dur + 0.02);
 }
 
 /* ---------------------------------------------------------------------
@@ -142,10 +118,10 @@ const resultsPanel = $("results");
 const progressFill = $("progressFill");
 const progressText = $("progressText");
 const currentEarLabel = $("currentEarLabel");
-const roundStatusEl = $("roundStatus");
-const tapButton = $("tapButton");
-const tapCounterEl = $("tapCounter");
-const skipBtn = $("skipBtn");
+const currentFreqLabel = $("currentFreqLabel");
+const volSlider = $("volSlider");
+const validateBtn = $("validateBtn");
+const noResponseBtn = $("noResponseBtn");
 const abortBtn = $("abortBtn");
 
 const audiogramContainer = $("audiogramContainer");
@@ -158,8 +134,6 @@ const resultsTable = $("resultsTable");
 /* ---------------------------------------------------------------------
  * Calibration
  * ------------------------------------------------------------------- */
-const CALIBRATION_DBFS = -5; // proche du volume numerique maximal, confortable une fois le volume systeme regle
-
 let calibPlaying = false;
 calibPlayBtn.addEventListener("click", () => {
   if (calibPlaying) {
@@ -167,40 +141,15 @@ calibPlayBtn.addEventListener("click", () => {
     calibPlaying = false;
     calibPlayBtn.textContent = "▶ Jouer le son de calibration (1000 Hz)";
   } else {
-    startContinuousTone(1000, "centre", CALIBRATION_DBFS);
+    startTone(1000, "centre", 78.5); // ~0dBFS-ish comfortable reference (slider 78.5 -> ~ -4.5dBFS)
     calibPlaying = true;
     calibPlayBtn.textContent = "■ Arrêter le son de calibration";
   }
 });
 
 /* ---------------------------------------------------------------------
- * Test flow — triplets de bips avec recherche automatique de seuil
- * (méthode adaptative "staircase", proche de ce que fait Apple dans
- * ses réglages d'accessibilité audio : on tape à chaque bip perçu, le
- * niveau se resserre automatiquement autour du seuil d'audibilité).
+ * Test flow
  * ------------------------------------------------------------------- */
-const START_DBFS_STANDARD = -24;
-const START_DBFS_EHF = -12;
-const STEP_COARSE_DB = 10;
-const STEP_FINE_DB = 4;
-const REVERSALS_TARGET = 3;
-const MAX_ROUNDS = 8;
-const DBFS_MIN = -70;
-const DBFS_MAX = 0;
-
-const BEEP_DURATION_MS = 380;
-const BEEP_FADE_MS = 15;
-const GAP_MIN_MS = 700;
-const GAP_MAX_MS = 1100;
-const LEAD_IN_MS = 300;
-const GRACE_AFTER_MS = 900;
-const TAP_DEBOUNCE_MS = 280;
-const HEARD_THRESHOLD = 2; // sur 3 bips
-const SKIP_SENTINEL = -1;
-
-let testAborted = false;
-let activeSkipHandler = null;
-
 function buildFreqList() {
   const list = [];
   if (includeStandard.checked) list.push(...STANDARD_FREQS);
@@ -226,7 +175,7 @@ startTestBtn.addEventListener("click", () => {
   resultsPanel.classList.add("hidden");
   testPanel.classList.remove("hidden");
 
-  runTest();
+  loadCurrentStep();
 });
 
 function totalSteps() {
@@ -235,6 +184,7 @@ function totalSteps() {
 function currentStepIndex() {
   return state.earIndex * state.freqList.length + state.freqIndex;
 }
+
 function updateProgress() {
   const total = totalSteps();
   const done = currentStepIndex();
@@ -242,128 +192,53 @@ function updateProgress() {
   progressText.textContent = `${done} / ${total}`;
 }
 
-// Joue un triplet de bips à intervalles aléatoires et compte les taps
-// reçus sur le bouton pendant la fenêtre de réponse. Le bouton "Passer"
-// peut interrompre immédiatement la manche via activeSkipHandler.
-function runBeepRound(freq, ear, levelDbfs) {
-  return new Promise((resolve) => {
-    let tapCount = 0;
-    let lastTapTime = -Infinity;
-    let listening = true;
-    const timeouts = [];
+function loadCurrentStep() {
+  const ear = state.ears[state.earIndex];
+  const freq = state.freqList[state.freqIndex];
 
-    function onTap() {
-      if (!listening) return;
-      const now = performance.now();
-      if (now - lastTapTime < TAP_DEBOUNCE_MS) return;
-      lastTapTime = now;
-      tapCount = Math.min(3, tapCount + 1);
-      tapCounterEl.textContent = `👆 ${tapCount} bip${tapCount > 1 ? "s" : ""} détecté${tapCount > 1 ? "s" : ""}`;
-    }
+  volSlider.value = 0;
+  currentEarLabel.textContent = EAR_LABELS[ear];
+  currentFreqLabel.textContent = formatFreq(freq);
+  currentFreqLabel.classList.toggle("ehf", freq > EHF_CUTOFF);
+  updateProgress();
 
-    function finish(result) {
-      if (!listening) return;
-      listening = false;
-      tapButton.removeEventListener("click", onTap);
-      timeouts.forEach(clearTimeout);
-      activeSkipHandler = null;
-      resolve(result);
-    }
-
-    activeSkipHandler = () => finish(SKIP_SENTINEL);
-    tapButton.addEventListener("click", onTap);
-    tapCounterEl.textContent = "";
-    roundStatusEl.textContent = "Écoutez attentivement…";
-
-    let t = LEAD_IN_MS;
-    for (let i = 0; i < 3; i++) {
-      timeouts.push(setTimeout(() => {
-        if (listening) playSingleBeep(freq, ear, levelDbfs);
-      }, t));
-      t += BEEP_DURATION_MS + (GAP_MIN_MS + Math.random() * (GAP_MAX_MS - GAP_MIN_MS));
-    }
-    timeouts.push(setTimeout(() => {
-      roundStatusEl.textContent = "";
-      finish(tapCount);
-    }, t + GRACE_AFTER_MS));
-  });
+  startTone(freq, ear, 0);
 }
 
-// Recherche adaptative du seuil pour une fréquence/oreille donnée :
-// on descend le niveau tant que le triplet est entendu (≥2/3), on
-// remonte sinon, et on resserre le pas après chaque inversion de sens.
-async function runStaircaseForFrequency(freq, ear) {
-  let level = freq > EHF_CUTOFF ? START_DBFS_EHF : START_DBFS_STANDARD;
-  let step = STEP_COARSE_DB;
-  let lastDirection = null;
-  const reversalLevels = [];
-  let round = 0;
+volSlider.addEventListener("input", () => updateToneGain(volSlider.value));
 
-  while (true) {
-    if (testAborted) return { hl: 0, noResponse: false };
+validateBtn.addEventListener("click", () => {
+  const ear = state.ears[state.earIndex];
+  const freq = state.freqList[state.freqIndex];
+  state.results[ear][freq] = { hl: sliderToHL(volSlider.value), noResponse: false };
+  advanceStep();
+});
 
-    round++;
-    const tapCount = await runBeepRound(freq, ear, level);
-    if (testAborted) return { hl: 0, noResponse: false };
-    if (tapCount === SKIP_SENTINEL) {
-      return { hl: NO_RESPONSE_HL, noResponse: true };
-    }
-
-    const heard = tapCount >= HEARD_THRESHOLD;
-
-    if (!heard && level >= DBFS_MAX) {
-      return { hl: NO_RESPONSE_HL, noResponse: true };
-    }
-
-    const direction = heard ? "down" : "up";
-    if (lastDirection && direction !== lastDirection) {
-      reversalLevels.push(level);
-      if (reversalLevels.length === 1) step = STEP_FINE_DB;
-      if (reversalLevels.length >= REVERSALS_TARGET) {
-        const last = reversalLevels.slice(-2);
-        const avg = last.reduce((a, b) => a + b, 0) / last.length;
-        return { hl: dbfsToHL(avg), noResponse: false };
-      }
-    }
-    lastDirection = direction;
-
-    level = clamp(level + (direction === "down" ? -step : step), DBFS_MIN, DBFS_MAX);
-
-    if (round >= MAX_ROUNDS) {
-      return { hl: dbfsToHL(level), noResponse: false };
-    }
-  }
-}
-
-async function runTest() {
-  testAborted = false;
-  for (state.earIndex = 0; state.earIndex < state.ears.length; state.earIndex++) {
-    currentEarLabel.textContent = EAR_LABELS[state.ears[state.earIndex]];
-    for (state.freqIndex = 0; state.freqIndex < state.freqList.length; state.freqIndex++) {
-      if (testAborted) return;
-      const ear = state.ears[state.earIndex];
-      const freq = state.freqList[state.freqIndex];
-      updateProgress();
-      roundStatusEl.textContent = "Préparez-vous…";
-      const result = await runStaircaseForFrequency(freq, ear);
-      if (testAborted) return;
-      state.results[ear][freq] = result;
-    }
-  }
-  finishTest();
-}
-
-skipBtn.addEventListener("click", () => {
-  if (activeSkipHandler) activeSkipHandler();
+noResponseBtn.addEventListener("click", () => {
+  const ear = state.ears[state.earIndex];
+  const freq = state.freqList[state.freqIndex];
+  state.results[ear][freq] = { hl: NO_RESPONSE_HL, noResponse: true };
+  advanceStep();
 });
 
 abortBtn.addEventListener("click", () => {
-  testAborted = true;
-  if (activeSkipHandler) activeSkipHandler();
   stopTone();
   testPanel.classList.add("hidden");
   setupPanel.classList.remove("hidden");
 });
+
+function advanceStep() {
+  state.freqIndex++;
+  if (state.freqIndex >= state.freqList.length) {
+    state.freqIndex = 0;
+    state.earIndex++;
+    if (state.earIndex >= state.ears.length) {
+      finishTest();
+      return;
+    }
+  }
+  loadCurrentStep();
+}
 
 function finishTest() {
   stopTone();

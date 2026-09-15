@@ -64,22 +64,17 @@
 
     <div class="test-status">
       <div class="test-ear" id="currentEarLabel">Oreille droite</div>
-      <div class="round-status" id="roundStatus">Préparez-vous…</div>
+      <div class="test-freq" id="currentFreqLabel">1000 Hz</div>
     </div>
 
-    <p class="tap-instructions">
-      Un triplet de bips va être joué. Tapez sur le bouton <strong>à chaque fois</strong> que vous en
-      entendez un, même très faible — comme le test auditif d'un iPhone.
-    </p>
-
-    <button id="tapButton" class="tap-button" type="button">
-      <span class="tap-icon">👂</span>
-      <span class="tap-word">J'entends</span>
-    </button>
-    <div class="tap-counter" id="tapCounter"></div>
+    <label for="volSlider" class="slider-label">
+      Augmentez doucement le curseur jusqu'à ce que vous entendiez <strong>juste</strong> le son (le plus faible possible que vous perceviez) :
+    </label>
+    <input type="range" id="volSlider" min="0" max="100" value="0" step="1">
 
     <div class="test-buttons">
-      <button id="skipBtn" class="btn btn-secondary">Je n'entends rien à ce niveau</button>
+      <button id="validateBtn" class="btn btn-primary">✓ Valider ce seuil</button>
+      <button id="noResponseBtn" class="btn btn-secondary">Je n'entends rien (même à fond)</button>
     </div>
 
     <button id="abortBtn" class="btn btn-link">Annuler le test</button>
