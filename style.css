@@ -260,29 +260,56 @@ body {
   letter-spacing: 0.08em;
   font-weight: 600;
 }
-.test-freq {
+.round-status {
   font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 2.6rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 500;
   color: var(--accent);
-  font-variant-numeric: tabular-nums;
-  margin-top: 4px;
+  min-height: 1.4em;
+  margin-top: 6px;
 }
-.test-freq.ehf { color: var(--accent-2); }
 
-.slider-label {
-  display: block;
-  font-size: 0.9rem;
-  color: var(--text-dim);
-  margin-bottom: 10px;
+.tap-instructions {
   text-align: center;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  max-width: 46ch;
+  margin: 0 auto 22px;
 }
 
-#volSlider {
-  width: 100%;
-  height: 34px;
-  accent-color: var(--accent);
-  margin-bottom: 20px;
+.tap-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 180px;
+  height: 180px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  box-shadow: 0 0 0 8px var(--zone-tint);
+  transition: transform 0.08s;
+}
+.tap-button:hover { filter: brightness(1.06); }
+.tap-button:active { transform: scale(0.96); }
+.tap-button:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 4px; }
+.tap-icon { font-size: 2.4rem; line-height: 1; }
+
+.tap-counter {
+  text-align: center;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--accent-2);
+  font-weight: 600;
+  font-size: 0.95rem;
+  min-height: 1.6em;
+  margin: 14px 0 20px;
 }
 
 .test-buttons {
@@ -361,7 +388,7 @@ body {
 }
 
 @media (max-width: 520px) {
-  .test-freq { font-size: 1.9rem; }
+  .tap-button { width: 150px; height: 150px; }
   .test-buttons { flex-direction: column; width: 100%; }
   .test-buttons .btn { width: 100%; }
   .audiogram-container svg { min-width: 0; }
