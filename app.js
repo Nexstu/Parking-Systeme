@@ -3,10 +3,10 @@
 /* ---------------------------------------------------------------------
  * Fréquences testées
  * Standard : celles d'un audiogramme classique (125 Hz - 8000 Hz)
- * Étendues (EHF) : au-delà de 8000 Hz, jusqu'à 16 000 Hz
+ * Étendues (EHF) : au-delà de 8000 Hz, par paliers de 500 Hz jusqu'à 14 000 Hz
  * ------------------------------------------------------------------- */
 const STANDARD_FREQS = [125, 250, 500, 1000, 1500, 2000, 3000, 4000, 6000, 8000];
-const EXTENDED_FREQS = [9000, 10000, 11200, 12500, 14000, 16000];
+const EXTENDED_FREQS = [8500, 9000, 9500, 10000, 10500, 11000, 11500, 12000, 12500, 13000, 13500, 14000];
 const ALL_TEMPLATE_FREQS = [...STANDARD_FREQS, ...EXTENDED_FREQS];
 const EHF_CUTOFF = 8000;
 
