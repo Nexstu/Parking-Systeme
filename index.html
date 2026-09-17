@@ -87,10 +87,17 @@
     <div class="legend">
       <span class="legend-item"><span class="dot right"></span> Oreille droite</span>
       <span class="legend-item"><span class="dot left"></span> Oreille gauche</span>
-      <span class="legend-item"><span class="zone-swatch"></span> Zone hautes fréquences étendues (&gt;8000 Hz)</span>
     </div>
 
-    <div id="audiogramContainer" class="audiogram-container"></div>
+    <div id="standardChartWrap" class="chart-block">
+      <h3 class="chart-label">Fréquences standard <span class="chart-range">125 Hz – 8000 Hz</span></h3>
+      <div id="audiogramStandard" class="audiogram-container"></div>
+    </div>
+
+    <div id="extendedChartWrap" class="chart-block">
+      <h3 class="chart-label chart-label--ehf">Hautes fréquences étendues <span class="chart-range">EHF · 8500 Hz – 14 000 Hz</span></h3>
+      <div id="audiogramExtended" class="audiogram-container"></div>
+    </div>
 
     <div class="results-actions">
       <button id="exportPngBtn" class="btn">⬇ Exporter en PNG</button>

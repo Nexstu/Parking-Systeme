@@ -124,7 +124,10 @@ const validateBtn = $("validateBtn");
 const noResponseBtn = $("noResponseBtn");
 const abortBtn = $("abortBtn");
 
-const audiogramContainer = $("audiogramContainer");
+const standardChartWrap = $("standardChartWrap");
+const extendedChartWrap = $("extendedChartWrap");
+const audiogramStandardEl = $("audiogramStandard");
+const audiogramExtendedEl = $("audiogramExtended");
 const exportPngBtn = $("exportPngBtn");
 const exportCsvBtn = $("exportCsvBtn");
 const printBtn = $("printBtn");
@@ -245,7 +248,7 @@ function finishTest() {
   updateProgress();
   testPanel.classList.add("hidden");
   resultsPanel.classList.remove("hidden");
-  drawAudiogram();
+  drawAudiograms();
   renderResultsTable();
 }
 
@@ -255,19 +258,11 @@ restartBtn.addEventListener("click", () => {
 });
 
 /* ---------------------------------------------------------------------
- * Audiogramme SVG
+ * Audiogrammes SVG — un graphique par plage de fréquences, chacun avec
+ * sa propre échelle horizontale (log) pour bien étaler ses points.
  * ------------------------------------------------------------------- */
 const SVG_NS = "http://www.w3.org/2000/svg";
-const CHART = { width: 820, height: 480, marginLeft: 70, marginRight: 30, marginTop: 40, marginBottom: 70 };
-
-function freqToX(freq) {
-  const { marginLeft, width, marginRight } = CHART;
-  const plotWidth = width - marginLeft - marginRight;
-  const minLog = Math.log2(ALL_TEMPLATE_FREQS[0]);
-  const maxLog = Math.log2(ALL_TEMPLATE_FREQS[ALL_TEMPLATE_FREQS.length - 1]);
-  const t = (Math.log2(freq) - minLog) / (maxLog - minLog);
-  return marginLeft + t * plotWidth;
-}
+const CHART = { width: 820, height: 420, marginLeft: 70, marginRight: 30, marginTop: 24, marginBottom: 70 };
 
 function hlToY(hl) {
   const { marginTop, height, marginBottom } = CHART;
@@ -283,7 +278,10 @@ function svgEl(tag, attrs, text) {
   return el;
 }
 
-function drawAudiogram() {
+// Dessine un audiogramme pour une plage de fréquences donnée : l'échelle
+// horizontale ne couvre QUE ces fréquences, donc les points sont bien
+// étalés au lieu d'être compressés à une extrémité d'un axe commun.
+function renderAudiogramSvg(freqList, container) {
   const { width, height, marginLeft, marginRight, marginTop, marginBottom } = CHART;
   const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, xmlns: SVG_NS, "font-family": "IBM Plex Mono, ui-monospace, monospace" });
 
@@ -291,26 +289,14 @@ function drawAudiogram() {
   const gridStrong = cssVar("--chart-grid-strong") || "#39506b";
   const textDim = cssVar("--text-dim") || "#9db0c4";
   const textColor = cssVar("--text") || "#e7edf5";
-  const accent = cssVar("--accent") || "#4fb0ff";
-  const zoneTint = cssVar("--zone-tint") || "rgba(79,176,255,0.07)";
 
   const plotLeft = marginLeft, plotRight = width - marginRight;
   const plotTop = marginTop, plotBottom = height - marginBottom;
-
-  // Zone hautes fréquences étendues (fond teinté)
-  svg.appendChild(svgEl("rect", {
-    x: freqToX(EHF_CUTOFF), y: plotTop,
-    width: plotRight - freqToX(EHF_CUTOFF), height: plotBottom - plotTop,
-    fill: zoneTint
-  }));
-  svg.appendChild(svgEl("line", {
-    x1: freqToX(EHF_CUTOFF), y1: plotTop, x2: freqToX(EHF_CUTOFF), y2: plotBottom,
-    stroke: accent, "stroke-width": 1, "stroke-dasharray": "4,4"
-  }));
-  const ehfLabel = svgEl("text", {
-    x: freqToX(EHF_CUTOFF) + 6, y: plotTop + 14, fill: accent, "font-size": 11
-  }, "Hautes fréquences étendues >");
-  svg.appendChild(ehfLabel);
+  const plotWidth = plotRight - plotLeft;
+  const minLog = Math.log2(freqList[0]);
+  const maxLog = Math.log2(freqList[freqList.length - 1]);
+  const span = maxLog - minLog || 1;
+  const freqToX = (freq) => plotLeft + ((Math.log2(freq) - minLog) / span) * plotWidth;
 
   // Grille horizontale (dB) + labels
   for (let hl = HL_MIN; hl <= HL_MAX; hl += 10) {
@@ -329,7 +315,7 @@ function drawAudiogram() {
   }, "Seuil indicatif (dB, non calibré)"));
 
   // Grille verticale (fréquences) + labels
-  ALL_TEMPLATE_FREQS.forEach((f) => {
+  freqList.forEach((f) => {
     const x = freqToX(f);
     svg.appendChild(svgEl("line", {
       x1: x, y1: plotTop, x2: x, y2: plotBottom, stroke: gridColor, "stroke-width": 1
@@ -350,7 +336,7 @@ function drawAudiogram() {
   // Tracés par oreille
   state.ears.forEach((ear) => {
     const color = earColor(ear);
-    const testedFreqs = ALL_TEMPLATE_FREQS.filter((f) => state.results[ear][f] !== undefined);
+    const testedFreqs = freqList.filter((f) => state.results[ear][f] !== undefined);
 
     // lignes reliant les points valides (segments coupés aux "aucune réponse")
     let pathPoints = [];
@@ -387,8 +373,19 @@ function drawAudiogram() {
     flushPath();
   });
 
-  audiogramContainer.innerHTML = "";
-  audiogramContainer.appendChild(svg);
+  container.innerHTML = "";
+  container.appendChild(svg);
+}
+
+function drawAudiograms() {
+  const standardTested = STANDARD_FREQS.some((f) => state.freqList.includes(f));
+  const extendedTested = EXTENDED_FREQS.some((f) => state.freqList.includes(f));
+
+  standardChartWrap.classList.toggle("hidden", !standardTested);
+  extendedChartWrap.classList.toggle("hidden", !extendedTested);
+
+  if (standardTested) renderAudiogramSvg(STANDARD_FREQS, audiogramStandardEl);
+  if (extendedTested) renderAudiogramSvg(EXTENDED_FREQS, audiogramExtendedEl);
 }
 
 /* ---------------------------------------------------------------------
@@ -424,28 +421,52 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-exportPngBtn.addEventListener("click", () => {
-  const svg = audiogramContainer.querySelector("svg");
-  if (!svg) return;
+function svgToImage(svg) {
   const svgData = new XMLSerializer().serializeToString(svg);
   const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(svgBlob);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
+    img.src = url;
+  });
+}
 
-  const img = new Image();
-  img.onload = () => {
-    const scale = 2;
-    const canvas = document.createElement("canvas");
-    canvas.width = CHART.width * scale;
-    canvas.height = CHART.height * scale;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = cssVar("--surface-2") || "#0b1119";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.scale(scale, scale);
-    ctx.drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
-    canvas.toBlob((blob) => downloadBlob(blob, "audiogramme.png"));
-  };
-  img.src = url;
+exportPngBtn.addEventListener("click", async () => {
+  const charts = [
+    { title: "Fréquences standard (125 Hz – 8000 Hz)", svg: audiogramStandardEl.querySelector("svg") },
+    { title: "Hautes fréquences étendues — EHF", svg: audiogramExtendedEl.querySelector("svg") },
+  ].filter((c) => c.svg);
+  if (charts.length === 0) return;
+
+  const scale = 2;
+  const titleH = 30;
+  const gap = 16;
+  const totalHeight = charts.length * (titleH + CHART.height) + gap * (charts.length - 1);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = CHART.width * scale;
+  canvas.height = totalHeight * scale;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = cssVar("--surface") || "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(scale, scale);
+  ctx.textBaseline = "top";
+  ctx.font = "600 15px 'IBM Plex Sans', sans-serif";
+
+  let y = 0;
+  for (const chart of charts) {
+    ctx.fillStyle = cssVar("--text") || "#16202c";
+    ctx.fillText(chart.title, 0, y + 6);
+    const img = await svgToImage(chart.svg);
+    ctx.fillStyle = cssVar("--surface-2") || "#f7f9fb";
+    ctx.fillRect(0, y + titleH, CHART.width, CHART.height);
+    ctx.drawImage(img, 0, y + titleH, CHART.width, CHART.height);
+    y += titleH + CHART.height + gap;
+  }
+
+  canvas.toBlob((blob) => downloadBlob(blob, "audiogramme.png"));
 });
 
 exportCsvBtn.addEventListener("click", () => {

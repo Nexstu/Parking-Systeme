@@ -312,11 +312,27 @@ body {
 }
 .dot.right { border-color: var(--right-ear); background: transparent; }
 .dot.left { border-color: var(--left-ear); background: transparent; }
-.zone-swatch {
-  width: 18px; height: 12px;
-  background: var(--zone-tint);
-  border: 1px dashed var(--accent);
-  display: inline-block;
+
+.chart-block { margin-bottom: 24px; }
+.chart-block:last-of-type { margin-bottom: 0; }
+
+.chart-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chart-label--ehf { color: var(--accent-2); }
+.chart-range {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 .audiogram-container {
